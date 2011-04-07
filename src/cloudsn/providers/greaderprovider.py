@@ -31,18 +31,21 @@ class GReaderProvider(ProviderUtilsBuilder):
 
     def update_account (self, account):
         credentials = account.get_credentials()
+        propreties  = account.get_properties()
+        
         g = GreaderAtom (credentials.username, credentials.password)
         g.refreshInfo()
 
         news = []
         new_count = g.getTotalUnread() - account.total_unread
-        if new_count > 1:
-            news.append(Notification('',
+        if new_count > int(propreties['batch']):
+            if new_count == 1:
+                news.append(Notification('',
+                    _('%d new unread new of %i') % (new_count, g.getTotalUnread()),
+                    ''))
+            else:
+                news.append(Notification('',
                 _('%d new unread news of %i') % (new_count, g.getTotalUnread()),
-                ''))
-        elif new_count == 1:
-            news.append(Notification('',
-                _('%d new unread new of %i') % (new_count, g.getTotalUnread()),
                 ''))
 
         account.new_unread = news;
@@ -52,12 +55,15 @@ class GReaderProvider(ProviderUtilsBuilder):
     def get_dialog_def (self):
         return [{"label": "User", "type" : "str"},
                 {"label": "Password", "type" : "pwd"},
-                {"label": "Show notifications", "type" : "check"}]
+                {"label": "Show notifications", "type" : "check"},
+                {"label": "Notify after", "type" : "int"}]
 
     def populate_dialog(self, widget, acc):
         credentials = acc.get_credentials_save()
+        propreties  = acc.get_properties()
         self._set_text_value ("User", credentials.username)
         self._set_text_value ("Password", credentials.password)
+        self._set_text_value ("Notify after", propreties["batch"])
         if "show_notifications" in acc:
             show_notifications = acc["show_notifications"]
         else:
@@ -69,9 +75,17 @@ class GReaderProvider(ProviderUtilsBuilder):
         username = self._get_text_value ("User")
         password = self._get_text_value ("Password")
         show_notifications = self._get_check_value("Show notifications")
+        batch = self._get_text_value("Notify after")
+        
         if username=='' or password=='':
             raise Exception(_("The user name and the password are mandatory"))
 
+        if batch=='':
+            batch = 1
+        try:
+            batch = int(batch)
+        except ValueError:
+            raise Exception(_("Batch has to be a number"))
         if not account:
             props = {'name' : account_name, 'provider_name' : self.get_name(),
                 'show_notifications' : show_notifications,
@@ -79,6 +93,7 @@ class GReaderProvider(ProviderUtilsBuilder):
             account = self.load_account(props)
         else:
             account["show_notifications"] = show_notifications
+            account["batch"] = batch
 
         credentials = Credentials(username, password)
         account.set_credentials(credentials)
