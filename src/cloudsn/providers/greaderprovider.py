@@ -40,17 +40,19 @@ class GReaderProvider(ProviderUtilsBuilder):
             batch = int(account["batch"])
         g = GreaderAtom (credentials.username, credentials.password)
         g.refreshInfo()
-
+        
         news = []
         new_count = g.getTotalUnread() - account.total_unread
-        if new_count > batch:
-            if new_count == 1:
-                news.append(Notification('',
-                    _('%d new unread new of %i') % (new_count, g.getTotalUnread()),
-                    ''))
-            else:
-                news.append(Notification('',
+        
+        if g.getTotalUnread() < batch:
+            pass
+        elif new_count > 1:
+            news.append(Notification('',
                 _('%d new unread news of %i') % (new_count, g.getTotalUnread()),
+                ''))
+        elif new_count == 1:
+            news.append(Notification('',
+                _('%d new unread new of %i') % (new_count, g.getTotalUnread()),
                 ''))
 
         account.new_unread = news;
