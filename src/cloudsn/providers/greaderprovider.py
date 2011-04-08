@@ -27,18 +27,23 @@ class GReaderProvider(ProviderUtilsBuilder):
     def load_account(self, props):
         acc = AccountCacheMails(props, self)
         acc.properties["activate_url"] = "http://reader.google.com"
+        if not "batch" in acc:
+            acc["batch"] = 1
         return acc
 
     def update_account (self, account):
         credentials = account.get_credentials()
         propreties  = account.get_properties()
-        
+
+        batch = 1
+        if "batch" in account:
+            batch = int(account["batch"])
         g = GreaderAtom (credentials.username, credentials.password)
         g.refreshInfo()
 
         news = []
         new_count = g.getTotalUnread() - account.total_unread
-        if new_count > int(propreties['batch']):
+        if new_count > batch:
             if new_count == 1:
                 news.append(Notification('',
                     _('%d new unread new of %i') % (new_count, g.getTotalUnread()),
@@ -60,10 +65,9 @@ class GReaderProvider(ProviderUtilsBuilder):
 
     def populate_dialog(self, widget, acc):
         credentials = acc.get_credentials_save()
-        propreties  = acc.get_properties()
         self._set_text_value ("User", credentials.username)
         self._set_text_value ("Password", credentials.password)
-        self._set_text_value ("Notify after", propreties["batch"])
+        self._set_text_value ("Notify after", acc["batch"])
         if "show_notifications" in acc:
             show_notifications = acc["show_notifications"]
         else:
@@ -79,21 +83,15 @@ class GReaderProvider(ProviderUtilsBuilder):
         
         if username=='' or password=='':
             raise Exception(_("The user name and the password are mandatory"))
-
-        if batch=='':
-            batch = 1
-        try:
-            batch = int(batch)
-        except ValueError:
-            raise Exception(_("Batch has to be a number"))
         if not account:
             props = {'name' : account_name, 'provider_name' : self.get_name(),
                 'show_notifications' : show_notifications,
-                'activate_url' : "http://reader.google.com"}
+                'activate_url' : "http://reader.google.com",
+                'batch' : batch}
             account = self.load_account(props)
         else:
             account["show_notifications"] = show_notifications
-            account["batch"] = batch
+            account["batch"] = int(batch)
 
         credentials = Credentials(username, password)
         account.set_credentials(credentials)
